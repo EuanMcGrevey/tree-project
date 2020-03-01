@@ -4,7 +4,7 @@ import tree.core._
 import tree.helper._
 import tree.rules._
 import scala.collection.mutable.Set
-import scala.collection.mutable.Queue
+import scala.collection.mutable.Seq
 
 
 object Main {
@@ -85,6 +85,8 @@ object Main {
 //      }
 //    }
 
+    // returns the result of one successful application of a given rule on a given tree
+    // supplied with a skip number, which is the number of successful rule applications to skip before returning
     def applyOnceWithSkip(t: Tree, skip: Int, r: Strategy[Tree]): (Int, RewriteResult[Tree]) = {
 
       def recurse(skip: Int): (Int, RewriteResult[Tree]) = {
@@ -121,7 +123,7 @@ object Main {
 
 
 
-
+    // returns the set containing all successful applications of a given rule on a given tree
     def applyOnceNTimes(t: Tree, r: Strategy[Tree], set: Set[Tree]): Set[Tree] = {
       applyOnceWithSkip(t, set.size, r) match {
         case (_,Failure(_)) => set // we are done, couldn't find a rule application that resulted in something new
@@ -152,12 +154,15 @@ object Main {
     // takes and begin and goal expression, and a set of rules.
     // Returns true if can go from the beginning to goal using the rules in the set
     def naiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int): Boolean = {
-      // will go through at most 5 iterations. This is needed to curb the exponential growth of the naive transformer.
-      if (depth == 3) return false
+      // will go through at most 3 iterations. This is needed to curb the exponential growth of the naive transformer.
+      if (depth == 3) {
+        println("Maximum depth reached")
+        return false
+      }
 
       var candidates : Set[Tree] = Set()
       for (rule <- rules) {
-        val rulecans = applyOnceNTimes(begin, rule, Set()) // are we sure we want to pass the empty set here, and not candidates?
+        val rulecans = applyOnceNTimes(begin, rule, Set())
         candidates ++= rulecans
       }
       // candidates should now hold all possible expressions we could get from successfully applying one of the rules in the provided set once.
@@ -169,21 +174,50 @@ object Main {
       for (can <- candidates) {
         if (naiveExpressionTransformer(can, goal, rules, depth + 1)) return true
       }
-      false // if all else fails
+      return false // if all else fails
     }
 
-//    {
-//      def dummyFun() : Boolean = {
-//        var s = Set(1,2,3)
-//        for (v <- s) {
-//          if (v == 2) {
-//            return true
-//          }
-//        }
-//        false
-//      }
-//      println(dummyFun())
-//    }
+
+    // next steps:
+    // - Have the naive expression transformer return the rules in order of application if it succeeds
+    // - Then see if can say where to apply the rules - Not sure on how to go about this.
+    // - See if can be smarter about which rules we bother applying. Is there any way to traverse the source code looking for patterns that come up in either the beginning or goal expression?
+    //   Would this even be faster?
+
+    // same as NaiveExpressionTransformer but this time return the order of rule application
+    // Failure is represented as an empty list
+
+    def stillNaiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Strategy[Tree]]): (Boolean, Seq[Strategy[Tree]]) = {
+      if (depth == 5) return (false, Seq()) // couldn't do the tranformation in less than 5 iterations
+
+      // we track which rule led to which resultant trees, so we can return the order
+      var candidates : Set[(Strategy[Tree],Set[Tree])] = Set()
+      for (rule <- rules) {
+        val rulecans = applyOnceNTimes(begin, rule, Set()) // rulecans has type Set[Tree]
+        candidates += Tuple2(rule , rulecans)  // that is to say, the trees in the set on the right got there from the rule on the left
+      }
+
+      for ((rule, rulecans) <- candidates) {
+        // Wanna iterate over rulecans.
+        for (can <- rulecans) {
+          if (can == goal) return (true, appOrder:+(rule))
+        }
+      }
+
+      // we couldn't find a succesful rule application in this iteration, go deeper
+      for ((rule, rulecans) <- candidates) {
+        for (can <- rulecans) {
+          stillNaiveExpressionTransformer(can, goal, rules, depth+1, appOrder:+(rule)) match {
+            case (true, newAppOrder) => return (true, newAppOrder)
+            case (false, _) => return (false, Seq()) // don't think we want to return it here
+            case _ => ??? // panic
+          }
+        }
+      }
+
+      return (false, Seq())
+    }
+
 
 
     // Begin     o        Goal        o             Rule 1:   x ->  o     Rule 2:   o      ->      o
