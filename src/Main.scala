@@ -138,6 +138,18 @@ object Main {
       }
     }
 
+    def applyOnceNTimesReturnSkip(t: Tree, r: Strategy[Tree], set: Set[(Tree, Int)]): Set[(Tree, Int)] = {
+      applyOnceWithSkip(t, set.size, r) match {
+        case (_,Failure(_)) => set //
+        case (_,Success(newT)) =>
+          t match {
+            case EmptyNode => set + Tuple2(newT, set.size)
+            case Node(lt, v, rt) =>
+              applyOnceNTimesReturnSkip(t, r, set + Tuple2(newT, set.size)) // we keep calling this function until we exhaust the tree
+          }
+      }
+    }
+
 
 
     // Two main problems:
@@ -151,14 +163,11 @@ object Main {
     //  - Need some way of avoiding repeated computation
     //  Keep track of trees we've seen before to avoid repeated computation of the same applyOnceNTimes call with the same tree and rule?
 
-    // takes and begin and goal expression, and a set of rules.
+    // Takes and begin and goal expression, and a set of rules.
     // Returns true if can go from the beginning to goal using the rules in the set
     def naiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int): Boolean = {
       // will go through at most 3 iterations. This is needed to curb the exponential growth of the naive transformer.
-      if (depth == 3) {
-        println("Maximum depth reached")
-        return false
-      }
+      if (depth == 0) return false
 
       var candidates : Set[Tree] = Set()
       for (rule <- rules) {
@@ -171,16 +180,14 @@ object Main {
         if (can == goal) return true
       }
       // { -- optional candidate pruning stage here -- } //
-      for (can <- candidates) {
-        if (naiveExpressionTransformer(can, goal, rules, depth + 1)) return true
-      }
+      for (can <- candidates) if (naiveExpressionTransformer(can, goal, rules, depth - 1)) return true
       return false // if all else fails
     }
 
 
     // next steps:
     // - Have the naive expression transformer return the rules in order of application if it succeeds
-    // - Then see if can say where to apply the rules - Not sure on how to go about this.
+    // - Then see if can say where to apply the rules - Either add a unique identifier to each node, or similar to skip, say how many times to skip rule application during pre-order traversal
     // - See if can be smarter about which rules we bother applying. Is there any way to traverse the source code looking for patterns that come up in either the beginning or goal expression?
     //   Would this even be faster?
 
@@ -188,7 +195,7 @@ object Main {
     // Failure is represented as an empty list
 
     def stillNaiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Strategy[Tree]]): (Boolean, Seq[Strategy[Tree]]) = {
-      if (depth == 5) return (false, Seq()) // couldn't do the tranformation in less than 5 iterations
+      if (depth == 0) return (false, Seq()) // couldn't do the tranformation in less than 5 iterations
 
       // we track which rule led to which resultant trees, so we can return the order
       var candidates : Set[(Strategy[Tree],Set[Tree])] = Set()
@@ -197,19 +204,17 @@ object Main {
         candidates += Tuple2(rule , rulecans)  // that is to say, the trees in the set on the right got there from the rule on the left
       }
 
+
       for ((rule, rulecans) <- candidates) {
-        // Wanna iterate over rulecans.
-        for (can <- rulecans) {
-          if (can == goal) return (true, appOrder:+(rule))
-        }
+        for (can <- rulecans) if (can == goal) return (true, appOrder :+ rule)
       }
 
       // we couldn't find a succesful rule application in this iteration, go deeper
       for ((rule, rulecans) <- candidates) {
         for (can <- rulecans) {
-          stillNaiveExpressionTransformer(can, goal, rules, depth+1, appOrder:+(rule)) match {
+          stillNaiveExpressionTransformer(can, goal, rules, depth-1, appOrder :+ rule) match {
             case (true, newAppOrder) => return (true, newAppOrder)
-            case (false, _) => return (false, Seq()) // don't think we want to return it here
+            case (false, _) => (false, Seq()) // just keep going, next can
             case _ => ??? // panic
           }
         }
@@ -217,6 +222,136 @@ object Main {
 
       return (false, Seq())
     }
+
+
+    // same as stillNaiveExpressionTransformer but returns the number of skips in a pre-order traversal needed to recreate the transformation
+    def evenStillNaiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Tuple2[Strategy[Tree], Int]]) : (Boolean, Seq[Tuple2[Strategy[Tree], Int]]) = {
+      if (depth == 0) return (false, Seq())
+
+      // we track which rule led to which resultant trees, as well as the number of skips for each tree-rule combination
+      var candidates : Set[( Strategy[Tree] , Set[(Tree, Int)] )] = Set()
+      for (rule <- rules) {
+        val rulecans = applyOnceNTimesReturnSkip(begin, rule, Set()) // rulecans has type Set [ (Tree , int) ]
+        candidates += Tuple2(rule , rulecans)
+      }
+
+      for ((rule, rulecans) <- candidates) {
+        for ((can, skips) <- rulecans) {
+          if (can == goal) return (true, appOrder :+ (rule, skips))
+        }
+      }
+
+     for ((rule, rulecans) <- candidates) {
+        for ((can, skips) <- rulecans) {
+          evenStillNaiveExpressionTransformer(can, goal, rules, depth-1, appOrder :+ (rule, skips)) match {
+            case (true, newAppOrder) => return (true, newAppOrder)
+            case (false, _) => (false, Seq()) // just keep going
+            case _ => ???
+          }
+        }
+      }
+
+      return (false, Seq())
+    }
+
+
+    // evenStillNaiveExpressionTransformer
+
+    {
+      println("------")
+      println("Test evenStillNaiveExpressionTransformer works in simple case")
+      val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
+      val goal = Node(Node(Node(EmptyNode, "X", EmptyNode), "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
+      val res = evenStillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: Only generateNodeFromEmpty")
+      println(s"Expected = (true, Seq((generateNodeFromEmpty, 2?), (generateNodeFromEmpty, 4?)))")
+      println(s"Got = ${res}")
+      println("------")
+    }
+
+
+    {
+      println("------")
+      println("Test evenStillNaiveExpressionTransformer works in simple case")
+      val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
+      val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
+      val res = evenStillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: Only generateNodeFromEmpty")
+      println(s"Expected = (true, Seq((generateNodeFromEmpty, 2?), (generateNodeFromEmpty, 4?)))")
+      println(s"Got = ${res}")
+      println("------")
+    }
+
+    {
+      println("------")
+      println("Test evenStillNaiveExpressionTransformer works in simple case")
+      val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
+      val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
+      val res = evenStillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: Only generateNodeFromEmpty")
+      println(s"Expected = (true, Seq((generateNodeFromEmpty, 2?), (generateNodeFromEmpty, 4?)))")
+      println(s"Got = ${res}")
+      println("------")
+    }
+
+
+    // stillNaiveExpressionTransformer
+
+    {
+      println("------")
+      println("Test stillNaiveExpressionTransformer works in simple case")
+      val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
+      val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
+      val res = stillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
+      println(s"Expected = (true, Seq(generateNodeFromEmpty, generateNodeFromEmpty))")
+      println(s"Got = ${res}")
+      println("-----")
+    }
+
+
+    // Begin        o      Goal        o     Rule 1: x  ->   o    Rule 2:   o       ->    o
+    // Expr =      / \     Expr =       \                   / \            / \           / \
+    //            o   o                  o                 x   x          x   o         x   x
+    //                                                                       / \
+    //                                                                      x   x
+    {
+      println("------")
+      println("Test stillNaiveExpressionTransformer fails when rules can be applied but impossible to achive goal")
+      val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
+      val goal = Node(EmptyNode, "B", Node(EmptyNode, "C", EmptyNode))
+
+      val res = stillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
+      println(s"Expected = (false, Seq())")
+      println(s"Got = ${res}")
+      println("-----")
+    }
+
+    {
+      println("-----")
+      println("Test stillNaiveExpressionTransformer returns false if possible but outside depth")
+      val begin = Node(EmptyNode, "A", EmptyNode)
+      val goal = Node(EmptyNode, "A", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", EmptyNode)))))
+      val res = stillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
+      println(s"Expected = (false, Seq())")
+      println(s"Got = ${res}")
+      println("-----")
+    }
+
 
 
 
@@ -233,7 +368,7 @@ object Main {
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
       //var rules = Set( generateNodeFromEmpty(), destroyOnlyRightChild() ) // get type mismatch when try to use rules as argument in next line
-      val res = naiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 0) // should return true.
+      val res = naiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3) // should return true.
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
@@ -242,15 +377,41 @@ object Main {
       println("-----")
     }
 
+
+    // naiveExpressionTransformer
+
+
+    // Begin        o      Goal        o     Rule 1: x  ->   o    Rule 2:   o       ->    o
+    // Expr =      / \     Expr =       \                   / \            / \           / \
+    //            o   o                  o                 x   x          x   o         x   x
+    //                                                                       / \
+    //                                                                      x   x
     {
       println("------")
       println("Test naiveExpressionTransformer fails when rules can be applied but impossible to achive goal")
+      val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
+      val goal = Node(EmptyNode, "B", Node(EmptyNode, "C", EmptyNode))
+
+      val res = naiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3)
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
+      println(s"Expected = false")
+      println(s"Got = ${res}")
       println("-----")
     }
 
     {
       println("-----")
       println("Test naiveExpressionTransformer returns false if possible but outside depth")
+      val begin = Node(EmptyNode, "A", EmptyNode)
+      val goal = Node(EmptyNode, "A", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", EmptyNode)))))
+      val res = naiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3)
+      println(s"Beginning expression = ${begin}")
+      println(s"Goal expression = ${goal}")
+      println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
+      println(s"Expected = false")
+      println(s"Got = ${res}")
       println("-----")
     }
 
@@ -271,6 +432,9 @@ object Main {
       println("------")
     }
 
+
+    // applyOnceWithDepth
+
     //        o
     //      /   \
     //     o     o
@@ -289,7 +453,9 @@ object Main {
       println("------")
     }
 
-    // do some tests
+
+    // myNewRule
+
     {
       // test myNewRule replaces Node with value "Hello" with EmptyNode
       val t: Tree = Node(EmptyNode, "Hello", EmptyNode)
@@ -310,6 +476,7 @@ object Main {
     }
 
 
+    // applyEverywhere
 
     {
       println("test applyEverywhere replaces single Node with value 'Hello' with EmptyNode")
@@ -321,6 +488,8 @@ object Main {
       println("")
     }
 
+
+    // applyOnce
 
     // test applyOnce works with helloToEmpty on this tree
     //    o     =     Nonsense      =>         Nonsense

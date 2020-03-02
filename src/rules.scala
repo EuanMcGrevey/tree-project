@@ -24,6 +24,8 @@ object rules {
       case EmptyNode => Success(Node(EmptyNode, "X", EmptyNode)) // problem? - the value here matters when checking for equality, e.g. when checking that the application of the rule has resulted in the desried goal expression
       case _ => Failure(generateNodeFromEmpty())
     }
+
+    override def toString(): String = s"generateNodeFromEmpty"
   }
 
 
