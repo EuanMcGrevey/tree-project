@@ -117,6 +117,8 @@ object rules {
         Success(Node(Node(EmptyNode, "-1", EmptyNode), "*", Node(rt, "-", lr)))
       case _ => Failure(NegateSubtractionReverseArgs())
     }
+
+    override def toString(): String = s"Double Negation Equivalence"
   }
 
   // Distributivity - Multiplication of real numbers distributes over Addition - a * (b + c) == a * b + a * c
@@ -129,10 +131,18 @@ object rules {
           case Node(b, v1, c) if v1 == "-" =>
             Success(Node(Node(a, "*", b), "-", Node(a, "*", c))) // a * (b - c) => a*b - a*c // a bit redundant as this is a special case of the above rewrite, where c is actually -1 * something
           case _ => Failure(Distributivity())
+//           not necessary as just commute the arguments first then apply Distributivity as normal
+//                      a match {
+//              case Node(d, v2, e) if v2 == "+" =>
+//                Success(Node(Node(d, "*", rt, "+", Node(e, "*", rt))
+//              case Node(d, v2, e) if v2 == "-" =>
+//                Success(Node(Node(d, "*", rt, "-", Node(e, "*", rt))
+//              case _ => Failure(Distributivity())
+//            }
         }
       case _ => Failure(Distributivity())
     }
-    override def toString(): String = s"Multiply distributes over Addition and Subtraction"
+    override def toString(): String = s"Distributivity"
   }
 
 
