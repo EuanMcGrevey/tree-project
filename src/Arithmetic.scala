@@ -51,7 +51,7 @@ object Arithmetic {
       println("Test (3 + 4) * 5   =>   (5 * 3) + (5 * 4)")
       val begin = Node(Node(Node(EmptyNode, "3", EmptyNode), "+", Node(EmptyNode, "4", EmptyNode)), "*", Node(EmptyNode, "5", EmptyNode))
       val goal = Node(Node(Node(EmptyNode, "5", EmptyNode), "*", Node(EmptyNode, "3", EmptyNode)), "+", Node(Node(EmptyNode, "5", EmptyNode), "*", Node(EmptyNode, "4", EmptyNode)))
-      val res = evenStillNaiveExpressionTransformer(begin, goal, Set(Distributivity(), Commutativity()), 5, Seq())
+      val res = universalExpressionTransformer(begin, goal, Set(Distributivity(), Commutativity()), 5, Seq())
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: Distributivity and Commutativity")

@@ -213,7 +213,7 @@ package object helper {
   // same as NaiveExpressionTransformer but this time return the order of rule application
   // Failure is represented as an empty list
 
-  def stillNaiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Strategy[Tree]]): (Boolean, Seq[Strategy[Tree]]) = {
+  def naiveExpressionTransformerReturnOrder(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Strategy[Tree]]): (Boolean, Seq[Strategy[Tree]]) = {
     if (depth == 0) return (false, Seq()) // couldn't do the tranformation in less than 5 iterations
 
     // we track which rule led to which resultant trees, so we can return the order
@@ -231,7 +231,7 @@ package object helper {
     // we couldn't find a succesful rule application in this iteration, go deeper
     for ((rule, rulecans) <- candidates) {
       for (can <- rulecans) {
-        stillNaiveExpressionTransformer(can, goal, rules, depth-1, appOrder :+ rule) match {
+        naiveExpressionTransformerReturnOrder(can, goal, rules, depth-1, appOrder :+ rule) match {
           case (true, newAppOrder) => return (true, newAppOrder)
           case (false, _) => (false, Seq()) // just keep going, next can
           case _ => ??? // panic
@@ -244,7 +244,7 @@ package object helper {
 
 
   // same as stillNaiveExpressionTransformer but returns the number of skips in a pre-order traversal needed to recreate the transformation
-  def evenStillNaiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Tuple2[Strategy[Tree], Int]]) : (Boolean, Seq[Tuple2[Strategy[Tree], Int]]) = {
+  def universalExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Tuple2[Strategy[Tree], Int]]) : (Boolean, Seq[Tuple2[Strategy[Tree], Int]]) = {
     if (depth == 0) return (false, Seq())
 
     // we track which rule led to which resultant trees, as well as the number of skips for each tree-rule combination
@@ -262,7 +262,7 @@ package object helper {
 
     for ((rule, rulecans) <- candidates) {
       for ((can, skips) <- rulecans) {
-        evenStillNaiveExpressionTransformer(can, goal, rules, depth-1, appOrder :+ (rule, skips)) match {
+        universalExpressionTransformer(can, goal, rules, depth-1, appOrder :+ (rule, skips)) match {
           case (true, newAppOrder) => return (true, newAppOrder)
           case (false, _) => (false, Seq()) // just keep going
           case _ => ???
