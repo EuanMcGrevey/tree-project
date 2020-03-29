@@ -18,7 +18,7 @@ object Main {
       println("Test evenStillNaiveExpressionTransformer works in simple case using one rule")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(Node(EmptyNode, "X", EmptyNode), "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
-      val res = evenStillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
+      val res = universalExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: Only generateNodeFromEmpty")
@@ -33,7 +33,7 @@ object Main {
       println("Test evenStillNaiveExpressionTransformer works with only one rule with multiple applications")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
-      val res = evenStillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
+      val res = universalExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: Only generateNodeFromEmpty")
@@ -47,7 +47,7 @@ object Main {
       println("Test evenStillNaiveExpressionTransformer works with two rules")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
-      val res = evenStillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(), destroyOnlyRightChild()), 3, Seq()) // test with multiple rules
+      val res = universalExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(), destroyOnlyRightChild()), 3, Seq()) // test with multiple rules
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: Only generateNodeFromEmpty")
@@ -64,7 +64,7 @@ object Main {
       println("Test stillNaiveExpressionTransformer works in simple case")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
-      val res = stillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
+      val res = naiveExpressionTransformerReturnOrder(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
@@ -85,7 +85,7 @@ object Main {
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(EmptyNode, "B", Node(EmptyNode, "C", EmptyNode))
 
-      val res = stillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
+      val res = naiveExpressionTransformerReturnOrder(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
@@ -99,7 +99,7 @@ object Main {
       println("Test stillNaiveExpressionTransformer returns false if possible but outside depth")
       val begin = Node(EmptyNode, "A", EmptyNode)
       val goal = Node(EmptyNode, "A", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", EmptyNode)))))
-      val res = stillNaiveExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
+      val res = naiveExpressionTransformerReturnOrder(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
       println(s"Beginning expression = ${begin}")
       println(s"Goal expression = ${goal}")
       println(s"Rules used: generateNodeFromEmpty and destroyOnlyRightChild")
