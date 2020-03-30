@@ -2,7 +2,9 @@ package tree
 
 import tree.core.Strategy
 
-import scala.collection.mutable.{Seq, Set}
+import scala.collection.mutable.{Seq, Set, Stack}
+
+import java.io.PrintWriter
 
 package object core {
 
@@ -272,5 +274,100 @@ package object helper {
 
     return (false, Seq())
   }
+
+
+  def isOrdinary(s: String): Boolean = {
+    val ordinary = (('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')).toSet
+    s.forall(ordinary.contains(_))
+  }
+
+
+  def writeExprToDot(writer: PrintWriter, expr: Tree, letters: Stack[Char]): Unit = {
+    expr match {
+      case Node(l, v, r) =>
+        val vs = letters.pop()
+        writer.write(vs + " [label=\"" + v + "\"];\n")
+        l match {
+          case Node(l1, v1, r1) =>
+            val ls = letters.pop()
+            writer.write(ls + " [label=\"" + v1 + "\"];\n")
+            writer.write(vs + " -> " + ls + ";\n") // Node going to its left child
+            writeExprToDot(writer, l, letters)
+          case EmptyNode => {}
+        }
+        r match {
+          case Node(l2, v2, r2) =>
+            val rs = letters.pop()
+            writer.write(rs + " [label=\"" + v2 + "\"];\n")
+            writer.write(vs + " -> " + rs + ";\n") // Node going to its right child
+            writeExprToDot(writer, r, letters)
+          case EmptyNode => {}
+        }
+      case EmptyNode => {}
+    }
+  }
+
+//  def writeExprToDot(writer: PrintWriter, expr: Tree): Unit = {
+//    def recurse(writer: PrintWriter, expr: Tree): Unit = {
+//
+//    }
+//
+//    expr match {
+//      case Node(l, v, r) =>
+//        isOrdinary(v) match {
+//          case false =>
+//            l match {
+//              case Node(l1, v1, r1) =>
+//                isOrdinary(v1) match {
+//                  case false =>
+//                    writer.write("'" + v + "' -> '" + v1 + "';\n")
+//                  case true =>
+//                    writer.write("'" + v + "' -> " + v1 + ";\n")
+//                }
+//                writeExprToDot(writer, l)
+//
+//              case EmptyNode => {}
+//            }
+//            r match {
+//              case Node(l2, v2, r2) =>
+//                isOrdinary(v2) match {
+//                  case false =>
+//                    writer.write("'" + v + "' -> '" + v2 + "';\n")
+//                  case true =>
+//                    writer.write("'" + v + "' -> " + v2 + ";\n")
+//                }
+//                writeExprToDot(writer, r)
+//
+//              case EmptyNode => {}
+//            }
+//          case true =>
+//            l match {
+//              case Node(l1, v1, r1) =>
+//                isOrdinary(v1) match {
+//                  case false =>
+//                    writer.write(v + " -> '" + v1 + "';\n")
+//                  case true =>
+//                    writer.write(v + " -> " + v1 + ";\n")
+//                }
+//                writeExprToDot(writer, l)
+//
+//              case EmptyNode => {}
+//            }
+//            r match {
+//              case Node(l2, v2, r2) =>
+//                isOrdinary(v2) match {
+//                  case false =>
+//                    writer.write(v + " -> '" + v2 + "';\n")
+//                  case true =>
+//                    writer.write(v + " -> " + v2 + ";\n")
+//                }
+//                writeExprToDot(writer, r)
+//
+//              case EmptyNode => {}
+//            }
+//        }
+//      case _ => {}
+//    }
+//  }
 
 }
