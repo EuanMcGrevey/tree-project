@@ -10,11 +10,11 @@ import scala.collection.mutable.Seq
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // evenStillNaiveExpressionTransformer
+    // universalExpressionTransformer
 
     {
       println("------")
-      println("Test evenStillNaiveExpressionTransformer works in simple case using one rule")
+      println("Test universalExpressionTransformer works in simple case using one rule")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(Node(EmptyNode, "X", EmptyNode), "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val res = universalExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
@@ -29,7 +29,7 @@ object Main {
 
     {
       println("------")
-      println("Test evenStillNaiveExpressionTransformer works with only one rule with multiple applications")
+      println("Test universalExpressionTransformer works with only one rule with multiple applications")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
       val res = universalExpressionTransformer(begin, goal, Set(generateNodeFromEmpty()), 3, Seq()) // test with single rule so I can make sure function works at least sometimes
@@ -43,7 +43,7 @@ object Main {
 
     {
       println("------")
-      println("Test evenStillNaiveExpressionTransformer works with two rules")
+      println("Test universalExpressionTransformer works with two rules")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
       val res = universalExpressionTransformer(begin, goal, Set(generateNodeFromEmpty(), destroyOnlyRightChild()), 3, Seq()) // test with multiple rules
@@ -56,11 +56,11 @@ object Main {
     }
 
 
-    // stillNaiveExpressionTransformer
+    // naiveExpressionTransformerReturnOrder
 
     {
       println("------")
-      println("Test stillNaiveExpressionTransformer works in simple case")
+      println("Test naiveExpressionTransformerReturnOrder works in simple case")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(Node(EmptyNode, "X", EmptyNode), "C", Node(EmptyNode, "X", EmptyNode)))
       val res = naiveExpressionTransformerReturnOrder(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
@@ -80,7 +80,7 @@ object Main {
     //                                                                      x   x
     {
       println("------")
-      println("Test stillNaiveExpressionTransformer fails when rules can be applied but impossible to achive goal")
+      println("Test naiveExpressionTransformerReturnOrder fails when rules can be applied but impossible to achive goal")
       val begin = Node(Node(EmptyNode, "A", EmptyNode), "B", Node(EmptyNode, "C", EmptyNode))
       val goal = Node(EmptyNode, "B", Node(EmptyNode, "C", EmptyNode))
 
@@ -95,7 +95,7 @@ object Main {
 
     {
       println("-----")
-      println("Test stillNaiveExpressionTransformer returns false if possible but outside depth")
+      println("Test naiveExpressionTransformerReturnOrder returns false if possible but outside depth")
       val begin = Node(EmptyNode, "A", EmptyNode)
       val goal = Node(EmptyNode, "A", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", Node(EmptyNode, "X", EmptyNode)))))
       val res = naiveExpressionTransformerReturnOrder(begin, goal, Set(generateNodeFromEmpty(),destroyOnlyRightChild()), 3, Seq())
