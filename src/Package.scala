@@ -2,7 +2,7 @@ package tree
 
 import tree.core.Strategy
 
-import scala.collection.mutable.{Seq, Set, Stack}
+import scala.collection.mutable.{Seq, Set, Stack, Map}
 
 import java.io.PrintWriter
 
@@ -282,26 +282,49 @@ package object helper {
   }
 
 
-  def writeExprToDot(writer: PrintWriter, expr: Tree, letters: Stack[Char]): Unit = {
+  def writeExprToDot(writer: PrintWriter, expr: Tree, letters: Stack[Char], nodesToLetters: Map[Tree, Char]): Unit = {
     expr match {
       case Node(l, v, r) =>
-        val vs = letters.pop()
-        writer.write(vs + " [label=\"" + v + "\"];\n")
-        l match {
-          case Node(l1, v1, r1) =>
-            val ls = letters.pop()
-            writer.write(ls + " [label=\"" + v1 + "\"];\n")
-            writer.write(vs + " -> " + ls + ";\n") // Node going to its left child
-            writeExprToDot(writer, l, letters)
-          case EmptyNode => {}
-        }
-        r match {
-          case Node(l2, v2, r2) =>
-            val rs = letters.pop()
-            writer.write(rs + " [label=\"" + v2 + "\"];\n")
-            writer.write(vs + " -> " + rs + ";\n") // Node going to its right child
-            writeExprToDot(writer, r, letters)
-          case EmptyNode => {}
+        (nodesToLetters get expr) match {
+          case None =>
+            val lab = letters.pop()
+            writer.write(lab + " [label=\"" + v + "\"];\n")
+
+            l match {
+              case Node(l1, v1, r1) =>
+                val ls = letters.pop()
+                writer.write(ls + " [label=\"" + v1 + "\"];\n")
+                writer.write(lab + " -> " + ls + ";\n") // Node going to its left child
+                writeExprToDot(writer, l, letters, nodesToLetters + (expr -> lab) + (l -> ls))
+              case EmptyNode => {}
+            }
+            r match {
+              case Node(l2, v2, r2) =>
+                val rs = letters.pop()
+                writer.write(rs + " [label=\"" + v2 + "\"];\n")
+                writer.write(lab + " -> " + rs + ";\n") // Node going to its right child
+                writeExprToDot(writer, r, letters, nodesToLetters + (expr -> lab) + (r -> rs)) // maybe need to return map as part of function
+              case EmptyNode => {}
+            }
+
+          case Some(value) =>
+            // we have a label for v already, let's reuse it
+            l match {
+              case Node(l1, v1, r1) =>
+                val ls = letters.pop()
+                writer.write(ls + " [label=\"" + v1 + "\"];\n")
+                writer.write(value + " -> " + ls + ";\n") // Node going to its left child
+                writeExprToDot(writer, l, letters, nodesToLetters + (expr -> value) + (l -> ls))
+              case EmptyNode => {}
+            }
+            r match {
+              case Node(l2, v2, r2) =>
+                val rs = letters.pop()
+                writer.write(rs + " [label=\"" + v2 + "\"];\n")
+                writer.write(value + " -> " + rs + ";\n") // Node going to its right child
+                writeExprToDot(writer, r, letters, nodesToLetters + (expr -> value) + (r -> rs)) // maybe need to return map as part of function
+              case EmptyNode => {}
+            }
         }
       case EmptyNode => {}
     }
