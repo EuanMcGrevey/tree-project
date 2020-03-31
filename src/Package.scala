@@ -2,7 +2,9 @@ package tree
 
 import tree.core.Strategy
 
-import scala.collection.mutable.{Seq, Set}
+import scala.collection.mutable.{Seq, Set, Stack, Map}
+
+import java.io.PrintWriter
 
 package object core {
 
@@ -213,7 +215,7 @@ package object helper {
   // same as NaiveExpressionTransformer but this time return the order of rule application
   // Failure is represented as an empty list
 
-  def stillNaiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Strategy[Tree]]): (Boolean, Seq[Strategy[Tree]]) = {
+  def naiveExpressionTransformerReturnOrder(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Strategy[Tree]]): (Boolean, Seq[Strategy[Tree]]) = {
     if (depth == 0) return (false, Seq()) // couldn't do the tranformation in less than 5 iterations
 
     // we track which rule led to which resultant trees, so we can return the order
@@ -231,7 +233,7 @@ package object helper {
     // we couldn't find a succesful rule application in this iteration, go deeper
     for ((rule, rulecans) <- candidates) {
       for (can <- rulecans) {
-        stillNaiveExpressionTransformer(can, goal, rules, depth-1, appOrder :+ rule) match {
+        naiveExpressionTransformerReturnOrder(can, goal, rules, depth-1, appOrder :+ rule) match {
           case (true, newAppOrder) => return (true, newAppOrder)
           case (false, _) => (false, Seq()) // just keep going, next can
           case _ => ??? // panic
@@ -244,7 +246,7 @@ package object helper {
 
 
   // same as stillNaiveExpressionTransformer but returns the number of skips in a pre-order traversal needed to recreate the transformation
-  def evenStillNaiveExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Tuple2[Strategy[Tree], Int]]) : (Boolean, Seq[Tuple2[Strategy[Tree], Int]]) = {
+  def universalExpressionTransformer(begin: Tree, goal: Tree, rules: Set[Strategy[Tree]], depth: Int, appOrder: Seq[Tuple2[Strategy[Tree], Int]]) : (Boolean, Seq[Tuple2[Strategy[Tree], Int]]) = {
     if (depth == 0) return (false, Seq())
 
     // we track which rule led to which resultant trees, as well as the number of skips for each tree-rule combination
@@ -262,7 +264,7 @@ package object helper {
 
     for ((rule, rulecans) <- candidates) {
       for ((can, skips) <- rulecans) {
-        evenStillNaiveExpressionTransformer(can, goal, rules, depth-1, appOrder :+ (rule, skips)) match {
+        universalExpressionTransformer(can, goal, rules, depth-1, appOrder :+ (rule, skips)) match {
           case (true, newAppOrder) => return (true, newAppOrder)
           case (false, _) => (false, Seq()) // just keep going
           case _ => ???
@@ -272,5 +274,123 @@ package object helper {
 
     return (false, Seq())
   }
+
+
+  def isOrdinary(s: String): Boolean = {
+    val ordinary = (('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')).toSet
+    s.forall(ordinary.contains(_))
+  }
+
+
+  def writeExprToDot(writer: PrintWriter, expr: Tree, letters: Stack[Char], nodesToLetters: Map[Tree, Char]): Unit = {
+    expr match {
+      case Node(l, v, r) =>
+        (nodesToLetters get expr) match {
+          case None =>
+            val lab = letters.pop()
+            writer.write(lab + " [label=\"" + v + "\"];\n")
+
+            l match {
+              case Node(l1, v1, r1) =>
+                val ls = letters.pop()
+                writer.write(ls + " [label=\"" + v1 + "\"];\n")
+                writer.write(lab + " -> " + ls + ";\n") // Node going to its left child
+                writeExprToDot(writer, l, letters, nodesToLetters + (expr -> lab) + (l -> ls))
+              case EmptyNode => {}
+            }
+            r match {
+              case Node(l2, v2, r2) =>
+                val rs = letters.pop()
+                writer.write(rs + " [label=\"" + v2 + "\"];\n")
+                writer.write(lab + " -> " + rs + ";\n") // Node going to its right child
+                writeExprToDot(writer, r, letters, nodesToLetters + (expr -> lab) + (r -> rs)) // maybe need to return map as part of function
+              case EmptyNode => {}
+            }
+
+          case Some(value) =>
+            // we have a label for v already, let's reuse it
+            l match {
+              case Node(l1, v1, r1) =>
+                val ls = letters.pop()
+                writer.write(ls + " [label=\"" + v1 + "\"];\n")
+                writer.write(value + " -> " + ls + ";\n") // Node going to its left child
+                writeExprToDot(writer, l, letters, nodesToLetters + (expr -> value) + (l -> ls))
+              case EmptyNode => {}
+            }
+            r match {
+              case Node(l2, v2, r2) =>
+                val rs = letters.pop()
+                writer.write(rs + " [label=\"" + v2 + "\"];\n")
+                writer.write(value + " -> " + rs + ";\n") // Node going to its right child
+                writeExprToDot(writer, r, letters, nodesToLetters + (expr -> value) + (r -> rs)) // maybe need to return map as part of function
+              case EmptyNode => {}
+            }
+        }
+      case EmptyNode => {}
+    }
+  }
+
+//  def writeExprToDot(writer: PrintWriter, expr: Tree): Unit = {
+//    def recurse(writer: PrintWriter, expr: Tree): Unit = {
+//
+//    }
+//
+//    expr match {
+//      case Node(l, v, r) =>
+//        isOrdinary(v) match {
+//          case false =>
+//            l match {
+//              case Node(l1, v1, r1) =>
+//                isOrdinary(v1) match {
+//                  case false =>
+//                    writer.write("'" + v + "' -> '" + v1 + "';\n")
+//                  case true =>
+//                    writer.write("'" + v + "' -> " + v1 + ";\n")
+//                }
+//                writeExprToDot(writer, l)
+//
+//              case EmptyNode => {}
+//            }
+//            r match {
+//              case Node(l2, v2, r2) =>
+//                isOrdinary(v2) match {
+//                  case false =>
+//                    writer.write("'" + v + "' -> '" + v2 + "';\n")
+//                  case true =>
+//                    writer.write("'" + v + "' -> " + v2 + ";\n")
+//                }
+//                writeExprToDot(writer, r)
+//
+//              case EmptyNode => {}
+//            }
+//          case true =>
+//            l match {
+//              case Node(l1, v1, r1) =>
+//                isOrdinary(v1) match {
+//                  case false =>
+//                    writer.write(v + " -> '" + v1 + "';\n")
+//                  case true =>
+//                    writer.write(v + " -> " + v1 + ";\n")
+//                }
+//                writeExprToDot(writer, l)
+//
+//              case EmptyNode => {}
+//            }
+//            r match {
+//              case Node(l2, v2, r2) =>
+//                isOrdinary(v2) match {
+//                  case false =>
+//                    writer.write(v + " -> '" + v2 + "';\n")
+//                  case true =>
+//                    writer.write(v + " -> " + v2 + ";\n")
+//                }
+//                writeExprToDot(writer, r)
+//
+//              case EmptyNode => {}
+//            }
+//        }
+//      case _ => {}
+//    }
+//  }
 
 }
