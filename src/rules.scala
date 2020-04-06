@@ -191,4 +191,33 @@ object rules {
     override def toString(): String = s"destroyOnlyRightChild"
   }
 
+
+//  case class section4Example() extends Strategy[Tree] {
+//    def apply(e: Tree): RewriteResult[Tree] = e match {
+//      case Node(l, v, r) =>
+//        l match {
+//          case EmptyNode => Success(Node(Node(Node(EmptyNode, "x", EmptyNode),"y", EmptyNode), v, r))
+//          case _ => Failure(section4Example())
+//        }
+//      case _ => Failure(section4Example())
+//    }
+//  }
+
+  case class section4Example() extends Strategy[Tree] {
+    def apply(e: Tree): RewriteResult[Tree] = e match {
+      case EmptyNode =>
+        Success(Node(Node(EmptyNode, "x", EmptyNode),"y", EmptyNode))
+      case _ => Failure(section4Example())
+    }
+  }
+
+  // takes a leaf node and gives it dummy children
+  case class section5Example() extends Strategy[Tree] {
+    def apply(e: Tree): RewriteResult[Tree] = e match {
+      case Node(EmptyNode, v, EmptyNode) =>
+        Success(Node(Node(EmptyNode, "x", EmptyNode),v,Node(EmptyNode, "y", EmptyNode)))
+      case _ => Failure(section5Example())
+    }
+  }
+
 }
